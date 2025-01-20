@@ -1,57 +1,37 @@
-resource "aws_iam_role" "lambda_exec_role" {
-  name = "lambda-exec-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        },
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_policy" "lambda_exec_policy" {
-  name = "lambda-exec-policy"
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "cognito-idp:*",
-          "dynamodb:*",
-          "s3:*"
-        ],
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_exec_role_policy" {
-  role       = aws_iam_role.lambda_exec_role.name
-  policy_arn = aws_iam_policy.lambda_exec_policy.arn
-}
-
 resource "aws_cognito_user_pool" "user_pool" {
   name = "videoframe-pool"
 
-  lambda_config {
-    post_authentication = aws_lambda_function.post_auth_lambda.arn
+  schema {
+    attribute_data_type = "String"
+    name               = "email"
+    required           = true
+    mutable            = false
+  }
+
+  schema {
+    attribute_data_type = "String"
+    name               = "name"
+    required           = false
+    mutable            = true
   }
 }
 
 resource "aws_cognito_user_pool_client" "user_pool_client" {
   name         = "videoframe-pool-client"
   user_pool_id = aws_cognito_user_pool.user_pool.id
+
+  explicit_auth_flows = [
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+  ]
+
   generate_secret = false
+}
+
+output "user_pool_id" {
+  value = aws_cognito_user_pool.user_pool.id
+}
+
+output "user_pool_client_id" {
+  value = aws_cognito_user_pool_client.user_pool_client.id
 }
